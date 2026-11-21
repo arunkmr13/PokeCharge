@@ -1,13 +1,13 @@
 <div align="center">
 
-<img src="docs/banner.svg" alt="PokéCharge" width="640">
+<img src="docs/banner.png" alt="PokéCharge" width="720">
 
 # PokéCharge
 
 **A Glyph-style charging screen saver for Pixel with a Pokémon catching game: plug in, watch the dot ring fill, catch what shows up.**
 
-[![Build](https://github.com/arunkmr13/ChargeCatch/actions/workflows/build.yml/badge.svg)](https://github.com/arunkmr13/ChargeCatch/actions/workflows/build.yml)
-[![Release](https://img.shields.io/github/v/release/arunkmr13/ChargeCatch?include_prereleases&sort=semver)](https://github.com/arunkmr13/ChargeCatch/releases)
+[![Build](https://github.com/arunkmr13/PokeCharge/actions/workflows/build.yml/badge.svg)](https://github.com/arunkmr13/PokeCharge/actions/workflows/build.yml)
+[![Release](https://img.shields.io/github/v/release/arunkmr13/PokeCharge?include_prereleases&sort=semver)](https://github.com/arunkmr13/PokeCharge/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Android 15+](https://img.shields.io/badge/Android-15%2B-3DDC84?logo=android&logoColor=white)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.2-7F52FF?logo=kotlin&logoColor=white)
@@ -67,9 +67,13 @@ It plugs into Android's built-in screen saver setting, so it starts by itself wh
 
 <!-- Capture on the phone with: adb exec-out screencap -p > docs/screenshots/charging.png -->
 
-| Charging | Encounter | Caught | Pokédex | Settings |
-|:---:|:---:|:---:|:---:|:---:|
-| <img src="docs/screenshots/charging.png" width="160"> | <img src="docs/screenshots/encounter.png" width="160"> | <img src="docs/screenshots/caught.png" width="160"> | <img src="docs/screenshots/pokedex.png" width="160"> | <img src="docs/screenshots/settings.png" width="160"> |
+| Charging | Encounter | Caught |
+|:---:|:---:|:---:|
+| <img src="docs/screenshots/charging.png" width="240" alt="Charging: Poké clock, dot ring with the wobbling ball, charging speed and temperature"> | <img src="docs/screenshots/encounter.png" width="240" alt="A wild Staryu appeared inside the ring"> | <img src="docs/screenshots/caught.png" width="240" alt="Caught: the ring sweeps to the accent colour with a check mark"> |
+
+| Pokédex | Details | Settings |
+|:---:|:---:|:---:|
+| <img src="docs/screenshots/pokedex.png" width="240" alt="Pokédex grid with caught Pokémon and silhouettes"> | <img src="docs/screenshots/details.png" width="240" alt="Details for Staryu: Pokédex entry, type, size and catch history"> | <img src="docs/screenshots/settings.png" width="240" alt="Settings: display, wake gestures and Pokémon"> |
 
 ## Getting started
 
@@ -82,7 +86,7 @@ It plugs into Android's built-in screen saver setting, so it starts by itself wh
 
 ### Install a release
 
-1. Download the latest `ChargeCatch-*.apk` from [Releases](https://github.com/arunkmr13/ChargeCatch/releases).
+1. Download the latest `PokeCharge-*.apk` from [Releases](https://github.com/arunkmr13/PokeCharge/releases).
 2. Open it on the phone and allow installs from that source.
 
 Release builds don't include sprites or the ball image (see [Sprites and item images](#sprites-and-item-images)), so Pokémon show as numbered placeholders and a bolt stands in for the ball.
@@ -90,8 +94,8 @@ Release builds don't include sprites or the ball image (see [Sprites and item im
 ### Build from source
 
 ```bash
-git clone https://github.com/arunkmr13/ChargeCatch.git
-cd ChargeCatch
+git clone https://github.com/arunkmr13/PokeCharge.git
+cd PokeCharge
 ./gradlew installDebug      # with the phone connected over USB or wireless debugging
 ```
 
@@ -205,4 +209,4 @@ Issues and pull requests are welcome. Please open an issue before starting a lar
 
 The source code is released under the [MIT License](LICENSE).
 
-Pokémon names, the Poké Ball and related data are trademarks of Nintendo, Creatures Inc. and Game Freak. No game sprites are included in this repository; the only Poké Ball artwork is the launcher icon.
+Pokémon names, the Poké Ball and related data are trademarks of Nintendo, Creatures Inc. and Game Freak. No sprite files are included in this repository; Pokémon appear only in the screenshots, and the only Poké Ball artwork is the launcher icon and the banner.

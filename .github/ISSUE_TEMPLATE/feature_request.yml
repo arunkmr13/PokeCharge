@@ -1,5 +1,5 @@
 name: Feature request
-description: Suggest an idea for Charge Catch
+description: Suggest an idea for PokéCharge
 labels: [enhancement]
 body:
   - type: textarea

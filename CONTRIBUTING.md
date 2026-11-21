@@ -1,4 +1,4 @@
-# Contributing to Charge Catch
+# Contributing to PokéCharge
 
 Thanks for your interest! Bug reports, ideas and pull requests are all welcome.
 
