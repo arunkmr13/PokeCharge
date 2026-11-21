@@ -168,7 +168,7 @@ flowchart LR
     I --> J[MainActivity<br/>Pokédex + Settings]
 ```
 
-A waiting Pokémon and the charge session's running time are saved in DataStore. Briefly waking the phone on the charger restarts the screen saver without losing either. Pokédex entries are downloaded from PokeAPI the first time you open a Pokémon's details, then kept on the phone.
+A waiting Pokémon and the charge session's running time are saved in DataStore. Briefly waking the phone on the charger restarts the screen saver without losing either. Sprites are downloaded from PokeAPI on first launch, and Pokédex entries the first time you open a Pokémon's details; both are then kept on the phone, so the screen saver works offline.
 
 ### Project structure
 
@@ -181,7 +181,7 @@ app/src/main/java/dev/arun/chargecatch/
 ├── game/EncounterEngine.kt         # Which Pokémon appears, shiny odds
 ├── game/Encounters.kt              # Spawning and catching, shared by all entry points
 ├── info/                           # Weather, calendar, location, notification listener, Pokédex entries
-├── sprites/SpriteRepository.kt     # Loads and trims sprites and item images
+├── sprites/SpriteRepository.kt     # Downloads, loads and trims sprites; the ball image
 ├── ui/DotMatrix.kt                 # Charge ring, dot glyphs and dot digits
 ├── ui/ScreenSaverScreen.kt         # The screen saver layout and clocks
 ├── ui/Type.kt, ui/AppColors.kt     # Google Sans Flex, light and dark palettes
