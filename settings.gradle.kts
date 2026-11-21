@@ -20,5 +20,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "ChargeCatch"
+rootProject.name = "PokeCharge"
 include(":app")
