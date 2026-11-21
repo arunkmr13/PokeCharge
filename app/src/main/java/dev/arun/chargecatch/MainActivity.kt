@@ -12,7 +12,13 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -61,6 +67,7 @@ import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -88,6 +95,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.arun.chargecatch.data.AppDatabase
 import dev.arun.chargecatch.data.AppSettings
+import dev.arun.chargecatch.data.AppTheme
 import dev.arun.chargecatch.data.SpeciesStats
 import dev.arun.chargecatch.data.ClockStyle
 import dev.arun.chargecatch.data.DisplayMode
@@ -103,6 +111,9 @@ import dev.arun.chargecatch.info.NotificationHub
 import dev.arun.chargecatch.info.NowPlayingListener
 import dev.arun.chargecatch.sprites.SpriteRepository
 import dev.arun.chargecatch.ui.AppTypography
+import dev.arun.chargecatch.ui.DarkAppColors
+import dev.arun.chargecatch.ui.LightAppColors
+import dev.arun.chargecatch.ui.LocalAppColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -110,22 +121,45 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-private val Panel = Color(0xFF161616)
-private val Muted = Color(0xFF9A9A9A)
-private val Soft = Color(0xFFBDBDBD)
+// The current palette's colours (light or dark), read where they're drawn
+private val Panel: Color @Composable @ReadOnlyComposable get() = LocalAppColors.current.panel
+private val Muted: Color @Composable @ReadOnlyComposable get() = LocalAppColors.current.muted
+private val Soft: Color @Composable @ReadOnlyComposable get() = LocalAppColors.current.soft
+private val Ink: Color @Composable @ReadOnlyComposable get() = LocalAppColors.current.text
 private val ShinyGold = Color(0xFFFFD66B)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContent {
-            MaterialTheme(
-                colorScheme = darkColorScheme(background = Color(0xFF0B0B0B), surface = Color(0xFF0B0B0B)),
-                typography = AppTypography
-            ) {
-                Surface(Modifier.fillMaxSize(), color = Color(0xFF0B0B0B)) {
-                    App()
+            val repo = remember { SettingsRepository(this) }
+            val settings by repo.settings.collectAsStateWithLifecycle(AppSettings())
+            val dark = when (settings.appTheme) {
+                AppTheme.SYSTEM -> isSystemInDarkTheme()
+                AppTheme.LIGHT -> false
+                AppTheme.DARK -> true
+            }
+            val colors = if (dark) DarkAppColors else LightAppColors
+            // Status and navigation bar icons follow the app's theme, not just the system's
+            SideEffect {
+                val transparent = android.graphics.Color.TRANSPARENT
+                enableEdgeToEdge(
+                    statusBarStyle = if (dark) SystemBarStyle.dark(transparent) else SystemBarStyle.light(transparent, transparent),
+                    navigationBarStyle = if (dark) SystemBarStyle.dark(transparent) else SystemBarStyle.light(transparent, transparent)
+                )
+            }
+            CompositionLocalProvider(LocalAppColors provides colors) {
+                MaterialTheme(
+                    colorScheme = if (dark) {
+                        darkColorScheme(background = colors.background, surface = colors.background)
+                    } else {
+                        lightColorScheme(background = colors.background, surface = colors.background)
+                    },
+                    typography = AppTypography
+                ) {
+                    Surface(Modifier.fillMaxSize(), color = colors.background) {
+                        App()
+                    }
                 }
             }
         }
@@ -139,6 +173,7 @@ private fun App() {
     val repo = remember { SettingsRepository(context) }
     val settings by repo.settings.collectAsStateWithLifecycle(AppSettings())
     val accent = Color(settings.accent)
+    val accentInk = LocalAppColors.current.readableAccent(accent)
     var tab by rememberSaveable { mutableIntStateOf(0) }
 
     // Save the approximate location for the weather while the app is open
@@ -151,22 +186,22 @@ private fun App() {
 
     Column(Modifier.fillMaxSize().safeDrawingPadding()) {
         Text(
-            "Charge Catch",
+            stringResource(R.string.app_name),
             fontSize = 30.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xFFF2F2F2),
+            color = Ink,
             modifier = Modifier.padding(start = 24.dp, top = 20.dp, bottom = 12.dp)
         )
         PrimaryTabRow(
             selectedTabIndex = tab,
             containerColor = Color.Transparent,
-            contentColor = accent,
-            divider = { Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0xFF222222))) },
+            contentColor = accentInk,
+            divider = { Box(Modifier.fillMaxWidth().height(1.dp).background(LocalAppColors.current.divider)) },
             indicator = {
                 TabRowDefaults.PrimaryIndicator(
                     Modifier.tabIndicatorOffset(tab, matchContentSize = true),
                     width = Dp.Unspecified,
-                    color = accent
+                    color = accentInk
                 )
             }
         ) {
@@ -174,7 +209,7 @@ private fun App() {
                 Tab(
                     selected = tab == index,
                     onClick = { tab = index },
-                    selectedContentColor = accent,
+                    selectedContentColor = accentInk,
                     unselectedContentColor = Muted,
                     text = { Text(label, fontSize = 16.sp, fontWeight = FontWeight.Medium) }
                 )
@@ -223,8 +258,8 @@ private fun PokedexTab(settings: AppSettings, accent: Color) {
                 Spacer(Modifier.height(8.dp))
                 LinearProgressIndicator(
                     progress = { if (species.isEmpty()) 0f else registered / species.size.toFloat() },
-                    color = accent,
-                    trackColor = Color(0xFF222222),
+                    color = LocalAppColors.current.readableAccent(accent),
+                    trackColor = LocalAppColors.current.track,
                     gapSize = 0.dp,
                     drawStopIndicator = {},
                     modifier = Modifier.fillMaxWidth()
@@ -290,7 +325,7 @@ private fun DexDetailSheet(species: Species, accent: Color, shinyCaught: Boolean
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor = Color(0xFF121212)
+        containerColor = LocalAppColors.current.sheet
     ) {
         Column(
             Modifier
@@ -313,7 +348,7 @@ private fun DexDetailSheet(species: Species, accent: Color, shinyCaught: Boolean
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("#${species.number}", color = Muted, fontSize = 14.sp)
-                Text(species.name, color = Color(0xFFF2F2F2), fontSize = 30.sp, fontWeight = FontWeight.SemiBold)
+                Text(species.name, color = Ink, fontSize = 30.sp, fontWeight = FontWeight.SemiBold)
                 if (species.genus.isNotEmpty()) Text(species.genus, color = Muted, fontSize = 15.sp)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -329,7 +364,7 @@ private fun DexDetailSheet(species: Species, accent: Color, shinyCaught: Boolean
             DetailCard {
                 Text(
                     description ?: "Pokédex entry loads when you're online.",
-                    color = if (description != null) Color(0xFFE6E6E6) else Muted,
+                    color = if (description != null) Ink else Muted,
                     fontSize = 15.sp,
                     lineHeight = 22.sp,
                     modifier = Modifier.padding(vertical = 10.dp)
@@ -372,7 +407,7 @@ private fun DetailCard(content: @Composable () -> Unit) {
 private fun DetailLine(label: String, value: String) {
     Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), horizontalArrangement = Arrangement.SpaceBetween) {
         Text(label, color = Muted, fontSize = 15.sp)
-        Text(value, color = Color(0xFFF2F2F2), fontSize = 15.sp, fontWeight = FontWeight.Medium)
+        Text(value, color = Ink, fontSize = 15.sp, fontWeight = FontWeight.Medium)
     }
 }
 
@@ -429,15 +464,15 @@ private fun DexTile(species: Species, caught: Boolean, shiny: Boolean, count: In
                     contentDescription = if (caught) species.name else "Not caught yet",
                     modifier = Modifier.fillMaxSize().padding(6.dp),
                     filterQuality = FilterQuality.None,
-                    colorFilter = if (caught) null else ColorFilter.tint(Color(0xFF2A2A2A))
+                    colorFilter = if (caught) null else ColorFilter.tint(LocalAppColors.current.silhouette)
                 )
             } else {
-                Text("?", color = Color(0xFF5A5A5A), fontSize = 22.sp)
+                Text("?", color = LocalAppColors.current.disabled, fontSize = 22.sp)
             }
         }
         Text(
             if (caught) species.name else "#${species.number}",
-            color = if (caught) Color(0xFFF2F2F2) else Muted,
+            color = if (caught) Ink else Muted,
             fontSize = 12.sp,
             maxLines = 1
         )
@@ -505,11 +540,11 @@ private fun SettingsTab(settings: AppSettings, accent: Color, repo: SettingsRepo
         verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
         if (spriteCount == 0) {
-            Box(Modifier.fillMaxWidth().background(Color(0xFF2A1E0E), RoundedCornerShape(16.dp)).padding(16.dp)) {
+            Box(Modifier.fillMaxWidth().background(LocalAppColors.current.warnBackground, RoundedCornerShape(16.dp)).padding(16.dp)) {
                 Text(
                     "No sprites found. Copy the Gen5 PNGs into app/src/main/assets/sprites/ " +
                         "(shiny ones into sprites/shiny/) and rebuild. Placeholders show until then.",
-                    color = Color(0xFFFFD39A),
+                    color = LocalAppColors.current.warnText,
                     fontSize = 14.sp
                 )
             }
@@ -582,13 +617,13 @@ private fun SettingsTab(settings: AppSettings, accent: Color, repo: SettingsRepo
                     Modifier
                         .fillMaxWidth()
                         .padding(12.dp)
-                        .background(Color(0xFF1E2430), RoundedCornerShape(16.dp))
+                        .background(LocalAppColors.current.infoBackground, RoundedCornerShape(16.dp))
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Text(
                         "These items stay hidden until you allow access",
-                        color = Color(0xFFF2F2F2),
+                        color = Ink,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Medium
                     )
@@ -614,7 +649,7 @@ private fun SettingsTab(settings: AppSettings, accent: Color, repo: SettingsRepo
                             color = Muted,
                             fontSize = 13.sp
                         )
-                        OutlinedButton(onClick = { openAppInfo() }) { Text("Open App info", color = Color(0xFFF2F2F2)) }
+                        OutlinedButton(onClick = { openAppInfo() }) { Text("Open App info", color = Ink) }
                     }
                 }
             }
@@ -662,6 +697,22 @@ private fun SettingsTab(settings: AppSettings, accent: Color, repo: SettingsRepo
             }
         }
 
+        Section("Appearance") {
+            Text(
+                "App theme · the screen saver always stays black",
+                color = Muted,
+                fontSize = 14.sp,
+                modifier = Modifier.padding(start = 16.dp, top = 12.dp)
+            )
+            Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                AppTheme.entries.forEach { theme ->
+                    Chip(theme.label, settings.appTheme == theme, accent) {
+                        update { it.copy(appTheme = theme) }
+                    }
+                }
+            }
+        }
+
         Section("Clock") {
             Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 ClockStyle.entries.forEach { style ->
@@ -680,7 +731,7 @@ private fun SettingsTab(settings: AppSettings, accent: Color, repo: SettingsRepo
                         Modifier
                             .size(44.dp)
                             .background(Color(argb), CircleShape)
-                            .border(3.dp, if (selected) Color(0xFFF2F2F2) else Color.Transparent, CircleShape)
+                            .border(3.dp, if (selected) Ink else Color.Transparent, CircleShape)
                             .selectable(selected = selected, role = Role.RadioButton) { update { it.copy(accent = argb) } }
                     )
                 }
@@ -695,7 +746,7 @@ private fun SettingsTab(settings: AppSettings, accent: Color, repo: SettingsRepo
         OutlinedButton(
             onClick = { context.startActivity(Intent(context, PreviewActivity::class.java)) },
             modifier = Modifier.fillMaxWidth().height(52.dp)
-        ) { Text("Preview the screen saver", color = Color(0xFFF2F2F2)) }
+        ) { Text("Preview the screen saver", color = Ink) }
         OutlinedButton(
             onClick = {
                 scope.launch {
@@ -705,7 +756,7 @@ private fun SettingsTab(settings: AppSettings, accent: Color, repo: SettingsRepo
                 }
             },
             modifier = Modifier.fillMaxWidth().height(52.dp)
-        ) { Text("Spawn a test encounter", color = Color(0xFFF2F2F2)) }
+        ) { Text("Spawn a test encounter", color = Ink) }
         Text(
             "In the screen saver: double-tap or swipe up to leave for the lock screen. $spriteCount sprites loaded. " +
                 "Text set in Google Sans Flex (SIL Open Font License).",
@@ -756,7 +807,7 @@ private fun RadioRow(title: String, subtitle: String, selected: Boolean, accent:
         RadioButton(selected = selected, onClick = null, colors = RadioButtonDefaults.colors(selectedColor = accent))
         Spacer(Modifier.size(12.dp))
         Column {
-            Text(title, color = Color(0xFFF2F2F2), fontSize = 16.sp)
+            Text(title, color = Ink, fontSize = 16.sp)
             Text(subtitle, color = Muted, fontSize = 13.sp)
         }
     }
@@ -779,7 +830,7 @@ private fun SwitchRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(Modifier.weight(1f)) {
-            Text(title, color = if (enabled) Color(0xFFF2F2F2) else Color(0xFF6A6A6A), fontSize = 16.sp)
+            Text(title, color = if (enabled) Ink else LocalAppColors.current.disabled, fontSize = 16.sp)
             Text(subtitle, color = Muted, fontSize = 13.sp)
         }
         Switch(

@@ -32,7 +32,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -139,7 +138,7 @@ fun ScreenSaverScreen(controller: ScreenSaverController, onExit: () -> Unit) {
                     .fillMaxSize()
                     .alpha(alpha)
                     .offset(shiftX, shiftY)
-                    .padding(top = 52.dp, bottom = 36.dp, start = 24.dp, end = 24.dp),
+                    .padding(top = 76.dp, bottom = 36.dp, start = 24.dp, end = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
@@ -171,14 +170,6 @@ private fun Header(
     accent: Color
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Row(
-            Modifier.fillMaxWidth().heightIn(min = 24.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(weather?.label ?: "", color = Color(0xFFD6D6D6), fontSize = 15.sp)
-        }
-        Spacer(Modifier.height(14.dp))
         val time = now.format(if (DateFormat.is24HourFormat(LocalContext.current)) CLOCK_24 else CLOCK_12)
         when (clockStyle) {
             ClockStyle.DOT -> {
@@ -201,7 +192,14 @@ private fun Header(
                 Spacer(Modifier.height(4.dp))
             }
         }
-        Text(now.format(DATE), color = Muted, fontSize = 16.sp)
+        // Date and weather share one centred line under the clock
+        Text(
+            listOfNotNull(now.format(DATE), weather?.label).joinToString("  ·  "),
+            color = Muted,
+            fontSize = 16.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
         AnimatedVisibility(visible = event != null) {
             Row(
                 Modifier

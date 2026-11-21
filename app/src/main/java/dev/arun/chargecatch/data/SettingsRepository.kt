@@ -17,6 +17,9 @@ import kotlinx.coroutines.flow.map
 enum class DisplayMode { ALWAYS_ON, WAKE_ON_GESTURE }
 
 /** How the screen saver draws the clock and charge percentage. */
+/** The app's look (the screen saver always stays black). */
+enum class AppTheme(val label: String) { SYSTEM("System"), LIGHT("Light"), DARK("Dark") }
+
 enum class ClockStyle(val label: String) { SANS("Google Sans"), POKE("Poké"), DOT("Dot matrix") }
 
 /**
@@ -37,7 +40,8 @@ data class AppSettings(
     val showCalendar: Boolean = true,
     val showChargingDetails: Boolean = true,
     val showNowPlaying: Boolean = true,
-    val showNotifications: Boolean = true
+    val showNotifications: Boolean = true,
+    val appTheme: AppTheme = AppTheme.SYSTEM
 ) {
     companion object {
         val ACCENTS = listOf(0xFF7CFFB2, 0xFFFFB547, 0xFF7FB8FF, 0xFFFF7A6B)
@@ -81,7 +85,8 @@ class SettingsRepository(context: Context) {
             showCalendar = p[SHOW_CALENDAR] ?: true,
             showChargingDetails = p[SHOW_CHARGING] ?: true,
             showNowPlaying = p[SHOW_NOW_PLAYING] ?: true,
-            showNotifications = p[SHOW_NOTIFICATIONS] ?: true
+            showNotifications = p[SHOW_NOTIFICATIONS] ?: true,
+            appTheme = p[APP_THEME]?.let { runCatching { AppTheme.valueOf(it) }.getOrNull() } ?: AppTheme.SYSTEM
         )
     }
 
@@ -120,6 +125,7 @@ class SettingsRepository(context: Context) {
             p[SHOW_CHARGING] = next.showChargingDetails
             p[SHOW_NOW_PLAYING] = next.showNowPlaying
             p[SHOW_NOTIFICATIONS] = next.showNotifications
+            p[APP_THEME] = next.appTheme.name
         }
     }
 
@@ -167,6 +173,7 @@ class SettingsRepository(context: Context) {
         val SHOW_CHARGING = booleanPreferencesKey("show_charging")
         val SHOW_NOW_PLAYING = booleanPreferencesKey("show_now_playing")
         val SHOW_NOTIFICATIONS = booleanPreferencesKey("show_notifications")
+        val APP_THEME = stringPreferencesKey("app_theme")
         val LATITUDE = doublePreferencesKey("latitude")
         val LONGITUDE = doublePreferencesKey("longitude")
 
