@@ -17,6 +17,7 @@ import dev.arun.chargecatch.info.NotificationHub
 import dev.arun.chargecatch.info.NowPlaying
 import dev.arun.chargecatch.info.Weather
 import dev.arun.chargecatch.info.WeatherRepository
+import dev.arun.chargecatch.sprites.SpriteRepository
 import dev.arun.chargecatch.wake.LiftDetector
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -105,6 +106,7 @@ class ScreenSaverController(
             }
         }
         NotificationHub.rebind(app)
+        SpriteRepository.get(app).downloadMissing()
         scope.launch { weatherLoop() }
         scope.launch { calendarLoop() }
         wake()

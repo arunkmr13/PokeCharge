@@ -41,7 +41,7 @@ object DexDescription {
         val connection = (URL("https://pokeapi.co/api/v2/pokemon-species/$speciesId/").openConnection() as HttpURLConnection).apply {
             connectTimeout = 10_000
             readTimeout = 10_000
-            setRequestProperty("User-Agent", "ChargeCatch (personal Android app)")
+            setRequestProperty("User-Agent", "PokeCharge (Android app)")
         }
         try {
             if (connection.responseCode != 200) return null

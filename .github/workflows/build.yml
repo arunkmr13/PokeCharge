@@ -34,7 +34,16 @@ jobs:
 
       - name: Build release APK
         if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          POKECHARGE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
         run: |
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$POKECHARGE_KEYSTORE_PASSWORD" ]; then
+            echo "::error::Add the RELEASE_KEYSTORE_BASE64 and RELEASE_KEYSTORE_PASSWORD repository secrets first"
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          export POKECHARGE_KEYSTORE="$RUNNER_TEMP/release.jks"
           ./gradlew assembleRelease
           cp app/build/outputs/apk/release/app-release.apk "PokeCharge-${GITHUB_REF_NAME}.apk"
 

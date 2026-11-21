@@ -9,6 +9,8 @@
 .externalNativeBuild
 .cxx
 .kotlin
-# Official sprites stay on your machine, out of any repository
+# Sprites stay out of the repository; the app downloads them on first launch
 /app/src/main/assets/sprites/
-/app/src/main/assets/items/
+# Release signing key
+*.jks
+*.keystore

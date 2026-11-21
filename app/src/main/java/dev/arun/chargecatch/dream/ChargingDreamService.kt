@@ -20,7 +20,7 @@ import kotlinx.coroutines.cancel
 
 /**
  * The screen saver. Android starts it when the phone is charging and the screen times out (with
- * Settings > Display & touch > Screen saver set to Charge Catch), and stops it on unplug or unlock.
+ * Settings > Display & touch > Screen saver set to PokéCharge), and stops it on unplug or unlock.
  * It is interactive: it takes taps itself and leaves on a double-tap or a swipe up.
  */
 class ChargingDreamService : DreamService(), LifecycleOwner, SavedStateRegistryOwner {

@@ -17,15 +17,28 @@ android {
         minSdk = 35
         targetSdk = 36
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = "1.0.0"
+    }
+
+    // Release builds on GitHub are signed with the PokéCharge key, kept in the repository's secrets,
+    // so a newer APK installs over an older one. Local release builds fall back to the debug key.
+    val releaseKeystore = System.getenv("POKECHARGE_KEYSTORE")?.let { file(it) }?.takeIf { it.exists() }
+    signingConfigs {
+        if (releaseKeystore != null) {
+            create("release") {
+                storeFile = releaseKeystore
+                storePassword = System.getenv("POKECHARGE_KEYSTORE_PASSWORD")
+                keyAlias = "pokecharge"
+                keyPassword = System.getenv("POKECHARGE_KEYSTORE_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            // Personal sideload build: signed with the debug key so it installs without a keystore
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName(if (releaseKeystore != null) "release" else "debug")
         }
     }
 

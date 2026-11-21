@@ -84,12 +84,13 @@ It plugs into Android's built-in screen saver setting, so it starts by itself wh
 | Device | Android 15 (API 35) or later. Built for Pixel phones, which have the Screen saver setting |
 | Build | Android Studio (latest stable), JDK 17 |
 
-### Install a release
+### Install on your phone
 
-1. Download the latest `PokeCharge-*.apk` from [Releases](https://github.com/arunkmr13/PokeCharge/releases).
-2. Open it on the phone and allow installs from that source.
+1. On the phone, open [Releases](https://github.com/arunkmr13/PokeCharge/releases/latest) and tap `PokeCharge-*.apk`.
+2. Tap the downloaded file. Allow installs from your browser when Android asks, then tap **Install**. If Play Protect warns about an unknown app, tap **Install anyway**.
+3. Open PokéCharge once while online. It downloads the Pokémon sprites in the background (about 1,300 small images, a couple of MB); a card in Settings shows the progress.
 
-Release builds don't include sprites or the ball image (see [Sprites and item images](#sprites-and-item-images)), so Pokémon show as numbered placeholders and a bolt stands in for the ball.
+To update, install the newer APK the same way. Your Pokédex stays.
 
 ### Build from source
 
@@ -121,17 +122,16 @@ In the app, **Settings → On the screen** lists anything still missing, each wi
 > [!IMPORTANT]
 > Android blocks notification access for apps that weren't installed from the Play Store. If the PokéCharge switch is greyed out, open **App info → ⋮ → Allow restricted settings**, then try again.
 
-### Sprites and item images
+### Sprites
 
-Neither is in the repository. Add your own PNGs:
+No sprites are in the repository or the APK. On first launch the app downloads the Black/White sprites from [PokeAPI's sprite collection](https://github.com/PokeAPI/sprites) into its own storage, scaled up without smoothing so the pixel art stays sharp. Pokémon whose sprite hasn't arrived yet show as placeholders.
+
+To skip the download in your own builds, put sprites in the app's assets instead (this folder is in `.gitignore`):
 
 ```
 app/src/main/assets/sprites/0001.png … 0649.png    # by National Dex number
-app/src/main/assets/sprites/shiny/0001.png …        # optional
-app/src/main/assets/items/ball.png                  # the ball that wobbles in the ring
+app/src/main/assets/sprites/shiny/0001.png …
 ```
-
-Both folders are in `.gitignore`. Without them the app still runs, with numbered placeholders and a bolt in place of the ball.
 
 ## Usage
 
@@ -201,7 +201,7 @@ Issues and pull requests are welcome. Please open an issue before starting a lar
 ## Acknowledgements
 
 - Inspired by the Nothing Glyph Matrix and the community *Glyph Catch* fan game.
-- Species data and Pokédex entries from [PokeAPI](https://pokeapi.co/).
+- Species data, Pokédex entries and sprites from [PokeAPI](https://pokeapi.co/).
 - Weather from [Open-Meteo](https://open-meteo.com/).
 - [Google Sans Flex](https://fonts.google.com/specimen/Google+Sans+Flex), under the SIL Open Font License (`app/src/main/assets/licenses/`).
 
@@ -209,4 +209,4 @@ Issues and pull requests are welcome. Please open an issue before starting a lar
 
 The source code is released under the [MIT License](LICENSE).
 
-Pokémon names, the Poké Ball and related data are trademarks of Nintendo, Creatures Inc. and Game Freak. No sprite files are included in this repository; Pokémon appear only in the screenshots, and the only Poké Ball artwork is the launcher icon and the banner.
+Pokémon names, the Poké Ball and related data are trademarks of Nintendo, Creatures Inc. and Game Freak. No sprite files are included in this repository or the APK; the app fetches them from PokeAPI at runtime. This is an unofficial fan project, not affiliated with or endorsed by them.

@@ -131,6 +131,8 @@ private val ShinyGold = Color(0xFFFFD66B)
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // First launch: fetch the Pokémon sprites in the background (no-op once they're all here)
+        SpriteRepository.get(this).downloadMissing()
         setContent {
             val repo = remember { SettingsRepository(this) }
             val settings by repo.settings.collectAsStateWithLifecycle(AppSettings())
@@ -313,7 +315,8 @@ private fun DexDetailSheet(species: Species, accent: Color, shinyCaught: Boolean
     val statsFlow = remember(species.id) { dao.watchStats(species.id) }
     val stats by statsFlow.collectAsStateWithLifecycle(null)
     var showShiny by rememberSaveable(species.id) { mutableStateOf(false) }
-    val sprite by produceState<ImageBitmap?>(null, species.id, showShiny) {
+    val revision by SpriteRepository.get(context).revision.collectAsStateWithLifecycle()
+    val sprite by produceState<ImageBitmap?>(null, species.id, showShiny, revision) {
         value = withContext(Dispatchers.IO) { SpriteRepository.get(context).load(species.id, showShiny) }
     }
     val description by produceState(DexDescription.cached(context, species.id), species.id) {
@@ -444,7 +447,8 @@ private fun formatMinutes(minutes: Int): String =
 @Composable
 private fun DexTile(species: Species, caught: Boolean, shiny: Boolean, count: Int, onClick: (() -> Unit)?) {
     val context = LocalContext.current
-    val sprite by produceState<ImageBitmap?>(null, species.id, shiny) {
+    val revision by SpriteRepository.get(context).revision.collectAsStateWithLifecycle()
+    val sprite by produceState<ImageBitmap?>(null, species.id, shiny, revision) {
         value = withContext(Dispatchers.IO) { SpriteRepository.get(context).load(species.id, shiny) }
     }
     Column(
@@ -485,7 +489,10 @@ private fun DexTile(species: Species, caught: Boolean, shiny: Boolean, count: In
 private fun SettingsTab(settings: AppSettings, accent: Color, repo: SettingsRepository) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val spriteCount = remember { SpriteRepository.get(context).availableIds.size }
+    val sprites = remember { SpriteRepository.get(context) }
+    val spriteRevision by sprites.revision.collectAsStateWithLifecycle()
+    val spriteDownload by sprites.download.collectAsStateWithLifecycle()
+    val spriteCount = remember(spriteRevision, spriteDownload.running) { sprites.spriteCount }
     val gestures = settings.displayMode == DisplayMode.WAKE_ON_GESTURE
     fun update(change: (AppSettings) -> AppSettings) {
         scope.launch { repo.update(change) }
@@ -523,7 +530,7 @@ private fun SettingsTab(settings: AppSettings, accent: Color, repo: SettingsRepo
         if (!granted && deniedForGood(Manifest.permission.READ_CALENDAR)) openAppInfo()
     }
     fun openNotificationAccess() {
-        // Straight to Charge Catch's own switch where the phone supports it, otherwise the list
+        // Straight to PokéCharge's own switch where the phone supports it, otherwise the list
         val direct = Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS).putExtra(
             Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME,
             ComponentName(context, NowPlayingListener::class.java).flattenToString()
@@ -539,14 +546,24 @@ private fun SettingsTab(settings: AppSettings, accent: Color, repo: SettingsRepo
             .padding(horizontal = 16.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
-        if (spriteCount == 0) {
-            Box(Modifier.fillMaxWidth().background(LocalAppColors.current.warnBackground, RoundedCornerShape(16.dp)).padding(16.dp)) {
-                Text(
-                    "No sprites found. Copy the Gen5 PNGs into app/src/main/assets/sprites/ " +
-                        "(shiny ones into sprites/shiny/) and rebuild. Placeholders show until then.",
-                    color = LocalAppColors.current.warnText,
-                    fontSize = 14.sp
-                )
+        if (spriteCount < SpriteRepository.TOTAL_SPRITES) {
+            val message = when {
+                spriteDownload.running ->
+                    "Downloading Pokémon sprites… ${spriteDownload.done} of ${spriteDownload.total}. " +
+                        "Keep the app open; it only happens once."
+                else ->
+                    "$spriteCount of ${SpriteRepository.TOTAL_SPRITES} Pokémon sprites downloaded. " +
+                        "Connect to the internet and tap here to fetch the rest."
+            }
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(LocalAppColors.current.warnBackground)
+                    .then(if (spriteDownload.running) Modifier else Modifier.clickable { sprites.downloadMissing() })
+                    .padding(16.dp)
+            ) {
+                Text(message, color = LocalAppColors.current.warnText, fontSize = 14.sp)
             }
         }
 
@@ -644,7 +661,7 @@ private fun SettingsTab(settings: AppSettings, accent: Color, repo: SettingsRepo
                     }
                     if (missing.any { it.first == "Notification access" }) {
                         Text(
-                            "If the Charge Catch switch is greyed out, Android is protecting a sideloaded app: " +
+                            "If the PokéCharge switch is greyed out, Android is protecting a sideloaded app: " +
                                 "open App info, tap ⋮ (top right), choose Allow restricted settings, then try again.",
                             color = Muted,
                             fontSize = 13.sp

@@ -42,6 +42,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -415,8 +416,11 @@ private fun WobblingBall() {
 @Composable
 private fun EncounterSprite(pending: PendingEncounter, throwing: Boolean) {
     val context = LocalContext.current
-    val sprite = remember(pending.speciesId, pending.shiny) {
-        SpriteRepository.get(context).load(pending.speciesId, pending.shiny)
+    val sprites = remember { SpriteRepository.get(context) }
+    // Reload when the first-launch download brings in a sprite that was missing
+    val revision by sprites.revision.collectAsState()
+    val sprite = remember(pending.speciesId, pending.shiny, revision) {
+        sprites.load(pending.speciesId, pending.shiny)
     }
     val bob by rememberInfiniteTransition(label = "bob").animateFloat(
         initialValue = 0f,
