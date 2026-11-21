@@ -26,14 +26,29 @@ data class Caught(
 /**
  * The Pokédex view of a species: how many caught and whether any was shiny.
  */
-data class DexEntry(val speciesId: Int, val count: Int, val anyShiny: Boolean)
+data class DexEntry(val speciesId: Int, val count: Int, val anyShiny: Boolean, val lastCaughtAt: Long)
+
+/** Your history with one species, for the details sheet. */
+data class SpeciesStats(
+    val count: Int,
+    val shinyCount: Int,
+    val firstCaughtAt: Long?,
+    val lastCaughtAt: Long?,
+    val longestCharge: Int?
+)
 
 @Dao
 interface CaughtDao {
+    @Query(
+        "SELECT COUNT(*) AS count, COALESCE(SUM(shiny), 0) AS shinyCount, MIN(caughtAt) AS firstCaughtAt, " +
+            "MAX(caughtAt) AS lastCaughtAt, MAX(minutesCharging) AS longestCharge FROM caught WHERE speciesId = :speciesId"
+    )
+    fun watchStats(speciesId: Int): Flow<SpeciesStats>
+
     @Insert
     suspend fun insert(caught: Caught): Long
 
-    @Query("SELECT speciesId, COUNT(*) AS count, MAX(shiny) AS anyShiny FROM caught GROUP BY speciesId")
+    @Query("SELECT speciesId, COUNT(*) AS count, MAX(shiny) AS anyShiny, MAX(caughtAt) AS lastCaughtAt FROM caught GROUP BY speciesId")
     fun watchDex(): Flow<List<DexEntry>>
 
     @Query("SELECT COUNT(DISTINCT speciesId) FROM caught")

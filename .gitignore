@@ -11,3 +11,4 @@
 .kotlin
 # Official sprites stay on your machine, out of any repository
 /app/src/main/assets/sprites/
+/app/src/main/assets/items/

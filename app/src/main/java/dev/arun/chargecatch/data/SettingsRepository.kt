@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
@@ -15,6 +16,9 @@ import kotlinx.coroutines.flow.map
 
 enum class DisplayMode { ALWAYS_ON, WAKE_ON_GESTURE }
 
+/** How the screen saver draws the clock and charge percentage. */
+enum class ClockStyle(val label: String) { SANS("Google Sans"), POKE("Poké"), DOT("Dot matrix") }
+
 /**
  * What the player chose in Settings.
  */
@@ -25,11 +29,20 @@ data class AppSettings(
     val visibleSeconds: Int = 15,
     val accent: Long = ACCENTS.first(),
     val encounters: Boolean = true,
-    val region: Region = Region.UNOVA
+    /** A new Pokémon turns up this often while charging, caught or not. */
+    val encounterMinutes: Int = 10,
+    val clockStyle: ClockStyle = ClockStyle.SANS,
+    val region: Region = Region.UNOVA,
+    val showWeather: Boolean = true,
+    val showCalendar: Boolean = true,
+    val showChargingDetails: Boolean = true,
+    val showNowPlaying: Boolean = true,
+    val showNotifications: Boolean = true
 ) {
     companion object {
         val ACCENTS = listOf(0xFF7CFFB2, 0xFFFFB547, 0xFF7FB8FF, 0xFFFF7A6B)
         val VISIBLE_SECONDS = listOf(10, 15, 30)
+        val ENCOUNTER_MINUTES = listOf(5, 10, 15, 30)
     }
 }
 
@@ -43,6 +56,9 @@ data class PendingEncounter(val speciesId: Int, val shiny: Boolean, val appeared
  * on the charger restarts the screen saver).
  */
 data class ChargeSession(val minutes: Int, val minutesSinceEncounter: Int, val lastTickAt: Long)
+
+/** Approximate position for the weather, saved while the app is open (rounded to about 1 km). */
+data class SavedLocation(val latitude: Double, val longitude: Double)
 
 private val Context.settingsStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
@@ -58,8 +74,28 @@ class SettingsRepository(context: Context) {
             visibleSeconds = p[VISIBLE_SECONDS] ?: 15,
             accent = p[ACCENT] ?: AppSettings.ACCENTS.first(),
             encounters = p[ENCOUNTERS] ?: true,
-            region = p[REGION]?.let { runCatching { Region.valueOf(it) }.getOrNull() } ?: Region.UNOVA
+            encounterMinutes = p[ENCOUNTER_MINUTES] ?: 10,
+            clockStyle = p[CLOCK_STYLE]?.let { runCatching { ClockStyle.valueOf(it) }.getOrNull() } ?: ClockStyle.SANS,
+            region = p[REGION]?.let { runCatching { Region.valueOf(it) }.getOrNull() } ?: Region.UNOVA,
+            showWeather = p[SHOW_WEATHER] ?: true,
+            showCalendar = p[SHOW_CALENDAR] ?: true,
+            showChargingDetails = p[SHOW_CHARGING] ?: true,
+            showNowPlaying = p[SHOW_NOW_PLAYING] ?: true,
+            showNotifications = p[SHOW_NOTIFICATIONS] ?: true
         )
+    }
+
+    val location: Flow<SavedLocation?> = store.data.map { p ->
+        val lat = p[LATITUDE] ?: return@map null
+        val lon = p[LONGITUDE] ?: return@map null
+        SavedLocation(lat, lon)
+    }
+
+    suspend fun saveLocation(location: SavedLocation) {
+        store.edit { p ->
+            p[LATITUDE] = Math.round(location.latitude * 100) / 100.0
+            p[LONGITUDE] = Math.round(location.longitude * 100) / 100.0
+        }
     }
 
     val pending: Flow<PendingEncounter?> = store.data.map { p ->
@@ -76,7 +112,14 @@ class SettingsRepository(context: Context) {
             p[VISIBLE_SECONDS] = next.visibleSeconds
             p[ACCENT] = next.accent
             p[ENCOUNTERS] = next.encounters
+            p[ENCOUNTER_MINUTES] = next.encounterMinutes
+            p[CLOCK_STYLE] = next.clockStyle.name
             p[REGION] = next.region.name
+            p[SHOW_WEATHER] = next.showWeather
+            p[SHOW_CALENDAR] = next.showCalendar
+            p[SHOW_CHARGING] = next.showChargingDetails
+            p[SHOW_NOW_PLAYING] = next.showNowPlaying
+            p[SHOW_NOTIFICATIONS] = next.showNotifications
         }
     }
 
@@ -116,7 +159,16 @@ class SettingsRepository(context: Context) {
         val VISIBLE_SECONDS = intPreferencesKey("visible_seconds")
         val ACCENT = longPreferencesKey("accent")
         val ENCOUNTERS = booleanPreferencesKey("encounters")
+        val ENCOUNTER_MINUTES = intPreferencesKey("encounter_minutes")
+        val CLOCK_STYLE = stringPreferencesKey("clock_style")
         val REGION = stringPreferencesKey("region")
+        val SHOW_WEATHER = booleanPreferencesKey("show_weather")
+        val SHOW_CALENDAR = booleanPreferencesKey("show_calendar")
+        val SHOW_CHARGING = booleanPreferencesKey("show_charging")
+        val SHOW_NOW_PLAYING = booleanPreferencesKey("show_now_playing")
+        val SHOW_NOTIFICATIONS = booleanPreferencesKey("show_notifications")
+        val LATITUDE = doublePreferencesKey("latitude")
+        val LONGITUDE = doublePreferencesKey("longitude")
 
         val PENDING_ID = intPreferencesKey("pending_id")
         val PENDING_SHINY = booleanPreferencesKey("pending_shiny")

@@ -15,10 +15,30 @@ data class Species(
     val captureRate: Int,
     val legendary: Boolean = false,
     val mythical: Boolean = false,
-    val baby: Boolean = false
+    val baby: Boolean = false,
+    /** Category, e.g. "Scratch Cat Pokémon". */
+    val genus: String = "",
+    val types: List<String> = emptyList(),
+    /** Height in decimetres and weight in hectograms, as PokeAPI stores them. */
+    val heightDm: Int = 0,
+    val weightHg: Int = 0,
+    val evolvesFrom: Int? = null
 ) {
     val isSpecial: Boolean get() = legendary || mythical
     val number: String get() = id.toString().padStart(3, '0')
+    val heightM: String get() = "%.1f m".format(heightDm / 10.0)
+    val weightKg: String get() = "%.1f kg".format(weightHg / 10.0)
+
+    /** How often it turns up, from its capture rate (the same weighting the encounters use). */
+    val rarity: String
+        get() = when {
+            mythical -> "Mythical"
+            legendary -> "Legendary"
+            captureRate >= 150 -> "Common"
+            captureRate >= 75 -> "Uncommon"
+            captureRate >= 30 -> "Rare"
+            else -> "Very rare"
+        }
 }
 
 /**
@@ -46,4 +66,7 @@ object SpeciesRepository {
     }
 
     fun byId(context: Context, id: Int): Species? = all(context).getOrNull(id - 1)?.takeIf { it.id == id }
+
+    /** Species that evolve from [id]. */
+    fun evolutionsOf(context: Context, id: Int): List<Species> = all(context).filter { it.evolvesFrom == id }
 }

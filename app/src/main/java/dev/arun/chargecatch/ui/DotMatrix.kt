@@ -1,21 +1,32 @@
 package dev.arun.chargecatch.ui
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlin.math.PI
-import kotlin.math.atan2
-import kotlin.math.sqrt
+import kotlin.math.cos
+import kotlin.math.min
+import kotlin.math.sin
 
-val DotOff = Color(0xFF1D1D1D)
+val DotOff = Color(0xFF262626)
 val DotOn = Color(0xFFF2F2F2)
 
-/** Small dot-art glyphs drawn inside the 25×25 ring. */
+/** Small dot-art glyphs drawn in the middle of the ring. */
 object Glyphs {
     val BOLT = listOf(
         "....###",
@@ -52,62 +63,109 @@ object Glyphs {
 }
 
 /**
- * The round 25×25 dot grid, like a Glyph Matrix: a charge ring around the edge (lit clockwise from
- * the top to [level], with an [accent] head) and an optional [glyph] in the middle. With
- * [showInner] off, only the ring is drawn, so a sprite can sit inside it.
+ * The charge ring: one circle of evenly spaced dots, lit clockwise from the top. The last lit dot
+ * is the [accent] head. While charging, a soft accent pulse walks the lit dots one at a time from
+ * the top, breathing in and out at each dot, and the head breathes slowly when the pulse reaches
+ * it. The fill animates to [level], and with [complete] the whole ring sweeps to the accent colour.
  */
 @Composable
-fun DotRing(
+fun ChargeRing(
     level: Float,
     accent: Color,
     modifier: Modifier = Modifier,
-    size: Dp = 340.dp,
-    glyph: List<String>? = null,
-    glyphColor: Color = accent,
-    showInner: Boolean = true,
-    ringOverride: Color? = null
+    size: Dp = 320.dp,
+    dots: Int = 72,
+    charging: Boolean = true,
+    complete: Boolean = false
 ) {
+    val shown by animateFloatAsState(level.coerceIn(0f, 1f), tween(900, easing = FastOutSlowInEasing), label = "level")
+    val sweep by animateFloatAsState(if (complete) 1f else 0f, tween(700, easing = FastOutSlowInEasing), label = "sweep")
+    val transition = rememberInfiniteTransition(label = "ring")
+    // Head: slow breath
+    val breath by transition.animateFloat(
+        initialValue = 0.25f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(2_400, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "headBreath"
+    )
+    // Pulse position, in dots: walks the whole ring at a slow, even pace. Past the head it is
+    // simply not drawn, which gives a natural rest before the next lap.
+    val pulse by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = dots.toFloat(),
+        animationSpec = infiniteRepeatable(tween(dots * PULSE_MS_PER_DOT, easing = LinearEasing)),
+        label = "pulse"
+    )
+
     Canvas(modifier.size(size)) {
-        val cell = this.size.width / GRID
-        val radius = cell * 0.34f
-        val glyphH = glyph?.size ?: 0
-        val glyphW = glyph?.maxOfOrNull { it.length } ?: 0
-        val gx = CENTER - glyphW / 2
-        val gy = CENTER - glyphH / 2
-        for (y in 0 until GRID) {
-            for (x in 0 until GRID) {
-                val dx = (x - CENTER).toFloat()
-                val dy = (y - CENTER).toFloat()
-                val dist = sqrt(dx * dx + dy * dy)
-                if (dist > OUTER) continue
-                val inRing = dist >= INNER
-                if (!inRing && !showInner) continue
-                var color = DotOff
-                var glow = false
-                if (inRing) {
-                    var angle = (atan2(dx, -dy) / (2 * PI)).toFloat()
-                    if (angle < 0) angle += 1f
-                    if (ringOverride != null) {
-                        color = ringOverride
-                    } else if (angle <= level) {
-                        val isHead = level - angle < 0.045f && level < 0.999f
-                        color = if (isHead) accent else DotOn
-                        glow = isHead
+        val dotRadius = this.size.minDimension * 0.0115f
+        val ringRadius = this.size.minDimension / 2f - dotRadius * 2.6f
+        val center = Offset(this.size.width / 2f, this.size.height / 2f)
+        val litExact = shown * dots
+        val headIndex = if (shown >= 0.999f) -1 else litExact.toInt().coerceAtMost(dots - 1)
+        val pulseIndex = pulse.toInt()
+        // 0 → 1 → 0 across each dot's turn: the breath in and out
+        val pulseBreath = sin(PI.toFloat() * (pulse - pulseIndex))
+
+        for (i in 0 until dots) {
+            val angle = (i.toFloat() / dots) * 2f * PI.toFloat() - PI.toFloat() / 2f
+            val position = Offset(center.x + ringRadius * cos(angle), center.y + ringRadius * sin(angle))
+            val sweptByCatch = i < sweep * dots
+            val lit = i < litExact.toInt()
+
+            val color: Color
+            var radius = dotRadius
+            when {
+                sweptByCatch -> color = accent
+                i == headIndex -> {
+                    val partial = (litExact - litExact.toInt()).coerceIn(0.35f, 1f)
+                    color = lerp(DotOff, accent, partial)
+                    radius = dotRadius * 1.15f
+                    if (charging) {
+                        drawCircle(accent.copy(alpha = 0.20f * breath), dotRadius * 3.4f, position)
+                        drawCircle(accent.copy(alpha = 0.32f * breath), dotRadius * 2.1f, position)
                     }
-                } else if (glyph != null) {
-                    val row = glyph.getOrNull(y - gy)
-                    if (row != null && (x - gx) in row.indices && row[x - gx] == '#') color = glyphColor
                 }
-                val center = Offset(x * cell + cell / 2, y * cell + cell / 2)
-                if (glow) drawCircle(color.copy(alpha = 0.35f), radius * 2.1f, center)
-                drawCircle(color, radius, center)
+                lit && charging && i == pulseIndex -> {
+                    // The walking pulse: this dot breathes into the accent colour and back
+                    color = lerp(DotOn, accent, pulseBreath)
+                    radius = dotRadius * (1f + 0.18f * pulseBreath)
+                    drawCircle(accent.copy(alpha = 0.28f * pulseBreath), dotRadius * 2.6f, position)
+                }
+                lit && charging && i == pulseIndex - 1 -> {
+                    // A faint afterglow on the dot it just left
+                    val fade = (1f - pulseBreath) * 0.45f
+                    color = lerp(DotOn, accent, fade)
+                }
+                lit -> color = DotOn
+                else -> color = DotOff
+            }
+            drawCircle(color, radius, position)
+        }
+    }
+}
+
+private const val PULSE_MS_PER_DOT = 420
+
+/**
+ * A dot-art [glyph] on its own (no background grid), centred in its box.
+ */
+@Composable
+fun DotGlyph(glyph: List<String>, color: Color, modifier: Modifier = Modifier, pitch: Dp = 11.dp) {
+    val columns = glyph.maxOf { it.length }
+    Canvas(modifier.size(pitch * columns, pitch * glyph.size)) {
+        val step = min(this.size.width / columns, this.size.height / glyph.size)
+        val radius = step * 0.36f
+        glyph.forEachIndexed { row, line ->
+            line.forEachIndexed { col, ch ->
+                if (ch == '#') drawCircle(color, radius, Offset(col * step + step / 2, row * step + step / 2))
             }
         }
     }
 }
 
 /**
- * Text drawn in 3×5 dots (digits, ':', '%' and space), for the clock and the charge percentage.
+ * Text drawn in 3×5 dots (digits, ':', '%' and space), for the dot-matrix clock style.
  */
 @Composable
 fun DotText(text: String, color: Color, modifier: Modifier = Modifier, pitch: Dp = 8.dp) {
@@ -146,8 +204,3 @@ private val DIGITS = mapOf(
     ':' to listOf(".", "#", ".", "#", "."),
     '%' to listOf("#.#", "..#", ".#.", "#..", "#.#")
 )
-
-private const val GRID = 25
-private const val CENTER = 12
-private const val OUTER = 12.4f
-private const val INNER = 10.5f

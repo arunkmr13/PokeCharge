@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Weather from Open-Meteo -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Approximate location for the weather, read only while the app is open -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- Next calendar event -->
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -37,6 +44,17 @@
             <meta-data
                 android:name="android.service.dream"
                 android:resource="@xml/dream_info" />
+        </service>
+
+        <!-- Now playing and notification icons, once the user grants Notification access -->
+        <service
+            android:name=".info.NowPlayingListener"
+            android:exported="true"
+            android:label="@string/dream_label"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
         </service>
     </application>
 

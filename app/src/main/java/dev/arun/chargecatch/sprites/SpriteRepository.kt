@@ -42,6 +42,18 @@ class SpriteRepository private constructor(private val context: Context) {
         return trim(bitmap).asImageBitmap().also { cache.put(key, it) }
     }
 
+    /** An item image from assets/items/, such as the ball (items/ball.png); null if missing. */
+    fun loadItem(name: String): ImageBitmap? {
+        val key = "item:$name"
+        cache.get(key)?.let { return it }
+        val bitmap = runCatching {
+            context.assets.open("items/$name").use { stream ->
+                BitmapFactory.decodeStream(stream, null, BitmapFactory.Options().apply { inScaled = false })
+            }
+        }.getOrNull() ?: return null
+        return trim(bitmap).asImageBitmap().also { cache.put(key, it) }
+    }
+
     private fun trim(source: Bitmap): Bitmap {
         val w = source.width
         val h = source.height

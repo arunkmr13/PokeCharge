@@ -20,14 +20,24 @@ data class CatchResult(val species: Species, val shiny: Boolean, val isNew: Bool
 object Encounters {
     private val engine = EncounterEngine()
 
-    /** Puts a new Pokémon in the waiting slot, replacing nothing if one already waits. */
-    suspend fun spawn(context: Context, minutesCharging: Int): PendingEncounter? = withContext(Dispatchers.IO) {
+    /**
+     * Puts a new Pokémon in the waiting slot. If one already waits, does nothing, unless
+     * [replaceExisting] is set: then the waiting one runs off and a different one takes its place.
+     */
+    suspend fun spawn(
+        context: Context,
+        minutesCharging: Int,
+        replaceExisting: Boolean = false
+    ): PendingEncounter? = withContext(Dispatchers.IO) {
         val settingsRepo = SettingsRepository(context)
-        if (settingsRepo.pending.first() != null) return@withContext null
+        val waiting = settingsRepo.pending.first()
+        if (waiting != null && !replaceExisting) return@withContext null
         val region = settingsRepo.settings.first().region
         val available = SpriteRepository.get(context).availableIds
         val pool = SpeciesRepository.all(context).filter { species ->
-            species.id <= region.maxId && (available.isEmpty() || species.id in available)
+            species.id <= region.maxId &&
+                (available.isEmpty() || species.id in available) &&
+                species.id != waiting?.speciesId
         }
         val species = engine.pick(pool, minutesCharging) ?: return@withContext null
         val encounter = PendingEncounter(
@@ -39,8 +49,6 @@ object Encounters {
         settingsRepo.setPending(encounter)
         encounter
     }
-
-    fun shouldAppear(minutesSinceEncounter: Int): Boolean = engine.shouldAppear(minutesSinceEncounter)
 
     /** Catches the waiting Pokémon (always succeeds) and records it. */
     suspend fun catchPending(context: Context): CatchResult? = withContext(Dispatchers.IO) {
